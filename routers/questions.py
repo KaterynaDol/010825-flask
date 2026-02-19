@@ -1,4 +1,8 @@
-from flask import Blueprint
+from flask import Blueprint, jsonify, request
+from sqlalchemy import select
+
+from core.db import db
+from models import Question, questions
 
 questions_bp = Blueprint(
     "questions",
@@ -10,7 +14,24 @@ questions_bp = Blueprint(
 # Read (list)
 @questions_bp.route("")
 def get_all_questions():
-    return "List of all questions"
+    # TODO-LIST:
+    # 1. Сделать запрос на получение всех объектов из базы
+    stmt = select(Question)
+    result = db.session.execute(stmt).scalars()
+
+    # 2. Как-то преобразовать сложный объект ORM в простой словарик python
+    # response = [
+    #     obj.to_dict()
+    #     for obj in result
+    # ]
+    response = []
+
+    for obj in result:
+        response.append(obj.to_dict())
+
+    # 3. Вернуть данные как ответ в JSON формате с правильным status code
+    # return "List of all questions"
+    return jsonify(response), 200 # 200 OK
 
 
 # Read (one by ID)
@@ -22,7 +43,65 @@ def get_question_by_id(question_id: int):
 # Create
 @questions_bp.route("/create", methods=["POST"])
 def create_new_question():
-    return "CREATE NEW QUESTION"
+    ...
+    # https://example.com/questions?new=true => request.arqs -> {"new": True}
+    # TODO-LIST для создания объекта
+    ALLOWED_FIELDS ={"title", "description", "start_date", "end_date", "is_active"}
+    # 1. Попытаться получить сырые данные
+    raw_data = request.get_json(silent=True)
+
+    # 2. Провести проверки, что данные есть, они валидны, все требуемые колонки указаны
+    if not raw_data:
+        return jsonify(
+            {
+                "error": "Request body is missing or not valid JSON"
+            }
+        ), 400 # 400 BAD REQUEST
+
+    # allowed ->  {"title", "description", "start_date", "end_date", "is_active"}
+    # raw -> {"title", "start_date", "end_date", "qwerty1"}
+    unknown_fields = set(raw_data) - ALLOWED_FIELDS
+
+    if unknown_fields:
+        return jsonify(
+            {
+                "error": f"Unknown fields for request: {', '.join(unknown_fields)}"
+            }
+        ), 400 # 400 BAD REQUEST
+
+    # required -> {"title", "start_date", "end_date"}
+    # raw -> {"title", "start_date"}
+    required = {"title", "start_date", "end_date"}
+    missing_fields = required - set(raw_data) # -> "end_date"
+
+    if missing_fields:
+        return jsonify(
+            {
+                "error": f"Missing required fields: {', '.join(missing_fields)}"
+            }
+        ), 400
+
+    try:
+        # 3. Попытаться создать новый объект
+        new_question = Question(**raw_data)
+
+        # 4. Добавить объект в сессию
+        db.session.add(new_question)
+
+        # 5. Применить изменения из сессии в Базу Данных
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(
+            {
+                "error": "Failed to create new question",
+                "detail": str(e)
+            }
+        ), 500 # 500 INTERNAL SERVER ERROR
+
+    # 6. Вернуть ответ
+    return jsonify(new_question.to_dict()), 201, # 201 CREATED
+    # return "CREATE NEW QUESTION"
 
 
 # Update

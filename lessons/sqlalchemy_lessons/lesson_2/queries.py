@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, func
 
 from lessons.sqlalchemy_lessons.lesson_2.db_connector import DBConnector
+from lessons.sqlalchemy_lessons.lesson_2.social_blogs_models import *
 
 from sqlalchemy.orm import joinedload
 
@@ -219,9 +220,77 @@ with DBConnector(engine) as session:
 
     # получить пользователей и для каждого пользователя взять его новости
 
-    stmt =(
-        select(User)
-        .outerjoin(News, Role.id == User.role_id)
-        .options(joinedload(User.news))
-        .where(Role.name == 'author')
-    )
+    # stmt =(
+    #     select(User)
+    #     .outerjoin(News, Role.id == User.role_id)
+    #     .options(joinedload(User.news))
+    #     .where(Role.name == 'author')
+    # )
+
+
+    # stmt =(
+    #     select(User).
+    #     where(User.first_name == 'Anna')
+    # )
+    #
+    # result = session.execute(stmt).scalars()
+    #
+    # print(result)
+    # print(list(result))
+    #
+    # for i in result:
+    #     print(i)
+    #     print(i.first_name)
+
+    # NOTE: Напишите запрос для вывода всех пользователей, рейтинг которых больше 6.
+    # stmt =(
+    #     select(User)
+    #     .where(User.rating > 6)
+    #     .order_by(User.rating)
+    # )
+    #
+    # result = session.execute(stmt).scalars()
+    # for user in result:
+    #     print(user.rating, user.first_name)
+
+    # stmt =(
+    #     select(User).
+    #     where(User.first_name == 'Anna')
+    # )
+    #
+    # result = session.execute(stmt).scalars().first()
+    # print(result)
+    # if result:
+    #     result.rating = 3.4
+    #     session.commit()
+    #     print(result.last_name, result.rating)
+    #
+
+
+    # stmt =(
+    #     select(
+    #         func.min(User.rating).label('min_rating'),
+    #         func.max(User.rating).label('max_rating')
+    #     )
+    # )
+    #
+    # result = session.execute(stmt).all()
+    # print(result)
+    # # print(list(result))
+    # print(result[0].min_rating)
+    # print(result[0].max_rating)
+
+
+stmt = (
+    select(User.rating,
+           func.count(User.id).label('user_count')
+           )
+    .group_by(User.rating)
+)
+
+result  = session.execute(stmt).all()
+# print(result)
+for user in result:
+    print(user.rating, user.user_count)
+
+

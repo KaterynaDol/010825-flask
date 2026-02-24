@@ -1,0 +1,12 @@
+.venv
+venv
+.env
+
+.idea
+.vscode
+__pycache__
+*.db
+lessons
+index.html
+HW_2.py
+HW_3.py
